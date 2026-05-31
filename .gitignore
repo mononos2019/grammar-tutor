@@ -1,0 +1,11 @@
+# Leftover from initial setup, safe to delete in File Explorer
+.git_broken*/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# Node (only if a build is ever added)
+node_modules/

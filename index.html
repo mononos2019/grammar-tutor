@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grammar Tutor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0f0e0d;--surface:#1a1917;--surface2:#242220;--border:#2e2b28;
+  --text:#f0ece6;--text2:#9c9690;--text3:#5e5a55;
+  --gold:#c9a84c;--gold2:#e8c97a;--green:#4caf82;--red:#e05c5c;--blue:#6c9ecf;
+  --radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;min-height:100vh;line-height:1.6}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{max-width:700px;margin:0 auto;padding:2rem 1.5rem}
+
+/* PIN SCREEN */
+#pin-screen{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem}
+#pin-screen.hidden{display:none}
+.pin-logo{font-family:'Playfair Display',serif;font-size:28px;color:var(--text);letter-spacing:-.5px;margin-bottom:.25rem}
+.pin-sub{font-size:13px;color:var(--text3);margin-bottom:.5rem}
+.pin-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;width:320px;text-align:center}
+.pin-box h2{font-family:'Playfair Display',serif;font-size:18px;margin-bottom:.4rem}
+.pin-box p{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:1.5rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .2s}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold)}
+.pin-dot.error{background:var(--red);border-color:var(--red)}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pin-key{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:18px;font-weight:500;color:var(--text);cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.pin-key:hover{background:var(--border);border-color:var(--text3)}
+.pin-key:active{transform:scale(.95)}
+.pin-key.del{font-size:14px;color:var(--text2)}
+.pin-key.empty{pointer-events:none;opacity:0}
+.pin-error{font-size:13px;color:var(--red);height:20px;text-align:center}
+.pin-first-note{font-size:12px;color:var(--text3);margin-top:1rem;line-height:1.6;border-top:1px solid var(--border);padding-top:.75rem}
+
+/* HEADER */
+header{padding:2rem 0 1.5rem;border-bottom:1px solid var(--border);margin-bottom:2rem;display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+header h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:500;color:var(--text);letter-spacing:-.5px}
+header .tag{font-size:11px;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;border:1px solid var(--gold);padding:2px 8px;border-radius:20px;opacity:.8}
+.nav-links{margin-left:auto;display:flex;gap:1rem}
+.nav-link{font-size:13px;color:var(--text2);cursor:pointer;padding:4px 0;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
+.nav-link:hover,.nav-link.active{color:var(--gold);border-color:var(--gold)}
+
+/* SCREENS */
+.screen{display:none;animation:fadeUp .3s ease}
+.screen.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* SETTINGS */
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:480px;margin-bottom:1.25rem}
+.setup-card h2{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:.5rem}
+.setup-card p{font-size:14px;color:var(--text2);margin-bottom:1.5rem;line-height:1.7}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem}
+.field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--gold)}
+.note{font-size:12px;color:var(--text3);margin-top:.4rem}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* BUTTONS */
+.btn{padding:10px 24px;border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;cursor:pointer;transition:all .2s;border:1px solid transparent}
+.btn-primary{background:var(--gold);color:#0f0e0d;border-color:var(--gold)}
+.btn-primary:hover{background:var(--gold2)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+.btn-danger{background:transparent;color:var(--red);border-color:var(--red);font-size:12px;padding:6px 14px}
+.btn-danger:hover{background:var(--red);color:#fff}
+
+/* TOPICS */
+.section-title{font-size:11px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:1rem}
+.topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:1.5rem}
+.topic-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:4px}
+.topic-card:hover{border-color:var(--gold);background:var(--surface2)}
+.topic-card.sel{border-color:var(--gold);background:rgba(201,168,76,.08)}
+.topic-card .tc-name{font-size:14px;font-weight:500;color:var(--text)}
+.topic-card .tc-count{font-size:11px;color:var(--text3)}
+.topic-card.sel .tc-name{color:var(--gold)}
+.row-btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* STATS */
+.stats-bar{display:flex;gap:2rem;padding:1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.5rem}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat-val{font-size:20px;font-weight:500;color:var(--text)}
+.stat-label{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.progress-dots{display:flex;gap:6px;margin-left:auto;align-items:center}
+.pd{width:10px;height:10px;border-radius:50%;background:var(--border);transition:background .3s}
+.pd.ok{background:var(--green)}.pd.bad{background:var(--red)}.pd.cur{background:var(--gold)}
+
+/* QUESTION */
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem}
+.q-meta{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem}
+.q-sentence{font-family:'Playfair Display',serif;font-size:20px;color:var(--text);line-height:1.7;margin-bottom:1.25rem}
+.blank{color:var(--gold);font-style:italic;border-bottom:2px solid var(--gold)}
+.answer-row{display:flex;gap:10px;align-items:center}
+.answer-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:15px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.answer-row input:focus{border-color:var(--gold)}
+.answer-row input:disabled{opacity:.5}
+.fb{margin-top:1rem;padding:12px 16px;border-radius:var(--radius-sm);font-size:14px;line-height:1.7;animation:fadeUp .25s ease}
+.fb.ok{background:rgba(76,175,130,.1);border-left:3px solid var(--green);color:#b2dfc9}
+.fb.bad{background:rgba(224,92,92,.1);border-left:3px solid var(--red);color:#f0b8b8}
+.fb.wait{background:var(--surface2);color:var(--text2)}
+.fb strong{font-weight:500}
+
+/* RESULT */
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem;text-align:center}
+.result-score-big{font-family:'Playfair Display',serif;font-size:72px;color:var(--gold);line-height:1}
+.result-of{font-size:14px;color:var(--text3);margin-bottom:1.25rem}
+.level-badge{display:inline-block;padding:6px 20px;border-radius:20px;font-size:13px;font-weight:500;margin-bottom:1rem;letter-spacing:.05em}
+.result-tip{font-size:14px;color:var(--text2);max-width:360px;margin:0 auto 1.5rem;line-height:1.7}
+.result-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* MISTAKES */
+.mistake-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin-bottom:.75rem}
+.mi-sentence{font-family:'Playfair Display',serif;font-size:16px;color:var(--text);margin-bottom:.4rem}
+.mi-meta{font-size:12px;color:var(--text3);display:flex;gap:1rem;flex-wrap:wrap}
+.mi-correct{color:var(--green)}.mi-wrong{color:var(--red)}.mi-topic{color:var(--blue)}
+.mi-exp{font-size:13px;color:var(--text2);margin-top:.5rem;line-height:1.6;border-top:1px solid var(--border);padding-top:.5rem}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:14px}
+.empty-state div{font-size:40px;margin-bottom:.75rem}
+
+/* PROGRESS */
+.prog-topic{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin-bottom:.75rem;display:flex;align-items:center;gap:1rem}
+.prog-name{font-weight:500;font-size:14px;flex:1}
+.prog-bar-wrap{flex:2;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .5s ease}
+.prog-pct{font-size:13px;color:var(--text2);min-width:36px;text-align:right}
+.prog-attempts{font-size:11px;color:var(--text3);min-width:60px;text-align:right}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 16px;font-size:13px;color:var(--text2);z-index:1000;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:480px){
+  header h1{font-size:22px}
+  .topics{grid-template-columns:1fr 1fr}
+  .q-sentence{font-size:17px}
+  .result-score-big{font-size:56px}
+  .pin-box{width:90vw}
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div style="text-align:center">
+    <div class="pin-logo">Grammar Tutor</div>
+    <div class="pin-sub">Personal English practice</div>
+  </div>
+  <div class="pin-box">
+    <h2 id="pin-title">Enter your PIN</h2>
+    <p id="pin-desc">Enter your 4-digit PIN to continue.</p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="pin-first-note" id="pin-first-note" style="display:none">
+      First time? You are setting a new PIN. Remember it — there is no recovery option.
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrap">
+  <header>
+    <h1>Grammar Tutor</h1>
+    <span class="tag">AI-Powered</span>
+    <div class="nav-links">
+      <span class="nav-link active" id="nav-quiz" onclick="showScreen('quiz')">Quiz</span>
+      <span class="nav-link" id="nav-mistakes" onclick="showScreen('mistakes')">Mistakes</span>
+      <span class="nav-link" id="nav-progress" onclick="showScreen('progress')">Progress</span>
+      <span class="nav-link" id="nav-settings" onclick="showScreen('settings')">Settings</span>
+    </div>
+  </header>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen">
+    <div class="setup-card">
+      <h2>API Key</h2>
+      <p>Your Anthropic API key. Stored only in this browser — sent directly to Anthropic over HTTPS.</p>
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <input type="password" id="api-key-input" placeholder="sk-ant-..."/>
+        <div class="note">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:1rem">
+        <button class="btn btn-primary" onclick="saveKey()">Save key</button>
+        <button class="btn btn-danger" onclick="clearKey()">Clear key</button>
+      </div>
+      <div id="key-status" style="margin-top:1rem;font-size:13px;color:var(--text3)"></div>
+    </div>
+    <div class="setup-card">
+      <h2>Change PIN</h2>
+      <p>Update your 4-digit access PIN. You will need to enter your current PIN first.</p>
+      <div class="field">
+        <label>Current PIN</label>
+        <input type="password" id="pin-current" placeholder="Current 4-digit PIN" maxlength="4" inputmode="numeric"/>
+      </div>
+      <div class="field">
+        <label>New PIN</label>
+        <input type="password" id="pin-new" placeholder="New 4-digit PIN" maxlength="4" inputmode="numeric"/>
+      </div>
+      <div class="field">
+        <label>Confirm New PIN</label>
+        <input type="password" id="pin-confirm" placeholder="Repeat new PIN" maxlength="4" inputmode="numeric"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:1rem">
+        <button class="btn btn-primary" onclick="changePin()">Update PIN</button>
+        <button class="btn btn-ghost" onclick="lockApp()">Lock app now</button>
+      </div>
+      <div id="pin-change-status" style="margin-top:1rem;font-size:13px;color:var(--text3)"></div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="screen-quiz" class="screen active">
+    <div id="topic-select">
+      <p class="section-title">Choose a topic</p>
+      <div class="topics" id="topics-grid"></div>
+      <div class="row-btns">
+        <button class="btn btn-primary" id="start-btn" onclick="startQuiz()" disabled>Start quiz</button>
+        <button class="btn btn-ghost" onclick="startReview()" id="review-btn" style="display:none">Review mistakes</button>
+      </div>
+    </div>
+    <div id="quiz-area" style="display:none">
+      <div class="stats-bar">
+        <div class="stat"><div class="stat-val" id="score-val">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-val" id="q-num">1/5</div><div class="stat-label">Question</div></div>
+        <div class="progress-dots" id="prog-dots"></div>
+      </div>
+      <div id="q-area"></div>
+    </div>
+    <div id="result-area" style="display:none">
+      <div class="result-card">
+        <div class="result-score-big" id="r-score"></div>
+        <div class="result-of">out of 5</div>
+        <div class="level-badge" id="r-badge"></div>
+        <div class="result-tip" id="r-tip"></div>
+        <div class="result-btns">
+          <button class="btn btn-primary" onclick="goTopics()">New quiz</button>
+          <button class="btn btn-ghost" onclick="showScreen('mistakes')">Review mistakes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISTAKES -->
+  <div id="screen-mistakes" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <p class="section-title" style="margin:0">Your mistake log</p>
+      <button class="btn btn-danger" onclick="clearMistakes()">Clear all</button>
+    </div>
+    <div id="mistakes-list"></div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="screen-progress" class="screen">
+    <p class="section-title">Performance by topic</p>
+    <div id="progress-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PIN LOGIC ─────────────────────────────────────────────────────────────────
+const DEFAULT_PIN = '1234';
+let pinBuffer = '';
+let pinMode = 'unlock'; // 'unlock' | 'set'
+let sessionUnlocked = false;
+
+function initPin() {
+  const stored = localStorage.getItem('gt_pin');
+  if (!stored) {
+    // First time — prompt to set a PIN
+    pinMode = 'set';
+    document.getElementById('pin-title').textContent = 'Set a PIN';
+    document.getElementById('pin-desc').textContent = 'Choose a 4-digit PIN to protect your app.';
+    document.getElementById('pin-first-note').style.display = 'block';
+  } else {
+    pinMode = 'unlock';
+    document.getElementById('pin-title').textContent = 'Enter your PIN';
+    document.getElementById('pin-desc').textContent = 'Enter your 4-digit PIN to continue.';
+  }
+}
+
+function pinPress(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => processPinInput(), 150);
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots(false);
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots(filled = true) {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d' + i);
+    d.classList.remove('filled', 'error');
+    if (i < pinBuffer.length) d.classList.add('filled');
+  }
+}
+
+function pinError(msg) {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d' + i);
+    d.classList.remove('filled');
+    d.classList.add('error');
+  }
+  document.getElementById('pin-error').textContent = msg;
+  setTimeout(() => {
+    for (let i = 0; i < 4; i++) document.getElementById('d' + i).classList.remove('error');
+    pinBuffer = '';
+    updatePinDots();
+  }, 800);
+}
+
+function processPinInput() {
+  const stored = localStorage.getItem('gt_pin');
+  if (pinMode === 'set') {
+    // Save new PIN
+    localStorage.setItem('gt_pin', pinBuffer);
+    toast('PIN set! You are now logged in.');
+    unlockApp();
+  } else {
+    // Verify PIN
+    if (pinBuffer === (stored || DEFAULT_PIN)) {
+      unlockApp();
+    } else {
+      pinError('Wrong PIN. Try again.');
+    }
+  }
+}
+
+function unlockApp() {
+  sessionUnlocked = true;
+  document.getElementById('pin-screen').classList.add('hidden');
+  renderTopics();
+  if (!localStorage.getItem('gt_apikey')) {
+    setTimeout(() => toast('Add your API key in Settings to start'), 600);
+  }
+}
+
+function lockApp() {
+  sessionUnlocked = false;
+  pinBuffer = '';
+  pinMode = 'unlock';
+  document.getElementById('pin-title').textContent = 'Enter your PIN';
+  document.getElementById('pin-desc').textContent = 'Enter your 4-digit PIN to continue.';
+  document.getElementById('pin-first-note').style.display = 'none';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-screen').classList.remove('hidden');
+}
+
+function changePin() {
+  const current = document.getElementById('pin-current').value.trim();
+  const newPin = document.getElementById('pin-new').value.trim();
+  const confirm = document.getElementById('pin-confirm').value.trim();
+  const stored = localStorage.getItem('gt_pin') || DEFAULT_PIN;
+  const status = document.getElementById('pin-change-status');
+
+  if (current !== stored) {
+    status.innerHTML = '<span style="color:var(--red)">Current PIN is incorrect.</span>';
+    return;
+  }
+  if (!/^\d{4}$/.test(newPin)) {
+    status.innerHTML = '<span style="color:var(--red)">PIN must be exactly 4 digits.</span>';
+    return;
+  }
+  if (newPin !== confirm) {
+    status.innerHTML = '<span style="color:var(--red)">New PINs do not match.</span>';
+    return;
+  }
+  localStorage.setItem('gt_pin', newPin);
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  document.getElementById('pin-confirm').value = '';
+  status.innerHTML = '<span style="color:var(--green)">✓ PIN updated successfully.</span>';
+  toast('PIN updated!');
+}
+
+// ── APP LOGIC ─────────────────────────────────────────────────────────────────
+const TOPICS = [
+  {key:'present_perfect', label:'Present Perfect'},
+  {key:'past_simple',     label:'Past Simple'},
+  {key:'future',          label:'Future Tenses'},
+  {key:'articles',        label:'Articles (a/an/the)'},
+  {key:'modals',          label:'Modal Verbs'},
+  {key:'prepositions',    label:'Prepositions'},
+  {key:'conditionals',    label:'Conditionals'},
+  {key:'passive',         label:'Passive Voice'},
+];
+
+let apiKey = localStorage.getItem('gt_apikey') || '';
+let topicKey = '';
+let exercises = [], qi = 0, score = 0, dotEls = [];
+let reviewMode = false;
+
+function getJSON(txt) {
+  const tries = [
+    () => JSON.parse(txt),
+    () => JSON.parse(txt.replace(/```json|```/gi,'').trim()),
+    () => { const m=txt.match(/\[[\s\S]*\]/); if(m) return JSON.parse(m[0]); throw 0; },
+    () => { const m=txt.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw 0; },
+  ];
+  for (const fn of tries) { try { const r=fn(); if(r) return r; } catch(_){} }
+  throw new Error('Could not parse JSON: '+txt.slice(0,200));
+}
+
+async function callClaude(messages) {
+  if (!apiKey) throw new Error('No API key set. Go to Settings.');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1200, messages })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) { toast('Enter a key first'); return; }
+  apiKey = val; localStorage.setItem('gt_apikey', val);
+  document.getElementById('key-status').innerHTML = '<span style="color:var(--green)">✓ Key saved</span>';
+  renderTopics(); toast('API key saved!');
+}
+
+function clearKey() {
+  apiKey = ''; localStorage.removeItem('gt_apikey');
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('key-status').innerHTML = '<span style="color:var(--red)">Key cleared</span>';
+  renderTopics();
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='mistakes') renderMistakes();
+  if (name==='progress') renderProgress();
+  if (name==='settings' && apiKey) document.getElementById('api-key-input').value = apiKey;
+}
+
+function renderTopics() {
+  const grid = document.getElementById('topics-grid');
+  const prog = getProgress();
+  grid.innerHTML = TOPICS.map(t => {
+    const p = prog[t.key];
+    const attempts = p ? p.attempts : 0;
+    const pct = p && p.total > 0 ? Math.round((p.correct/p.total)*100) : null;
+    return `<div class="topic-card ${topicKey===t.key?'sel':''}" onclick="pickTopic('${t.key}',this)">
+      <div class="tc-name">${t.label}</div>
+      <div class="tc-count">${attempts>0 ? pct+'% accuracy · '+attempts+' quizzes' : 'Not tried yet'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('start-btn').disabled = !topicKey || !apiKey;
+  const mistakes = getMistakes();
+  const rb = document.getElementById('review-btn');
+  rb.style.display = mistakes.length > 0 ? 'inline-block' : 'none';
+}
+
+function pickTopic(key, el) {
+  topicKey = key;
+  document.querySelectorAll('.topic-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('start-btn').disabled = !apiKey;
+}
+
+async function startQuiz() {
+  reviewMode = false;
+  if (!apiKey) { toast('Add your API key in Settings first'); showScreen('settings'); return; }
+  if (!topicKey) { toast('Pick a topic first'); return; }
+  document.getElementById('topic-select').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  document.getElementById('result-area').style.display='none';
+  const label = TOPICS.find(t=>t.key===topicKey).label;
+  document.getElementById('q-area').innerHTML = '<div class="fb wait">Generating 5 exercises for <strong>'+label+'</strong>…</div>';
+
+  const prompt = `You are an English grammar tutor. Generate exactly 5 fill-in-the-blank sentences for: "${label}".
+Return ONLY a raw JSON array, no markdown:
+[{"sentence":"She ___ to Paris last year.","answer":"went","hint":"past simple of go"},...]
+Rules: one blank per sentence shown as ___; answer is one word or short phrase; vary difficulty easy to challenging.`;
+
+  try {
+    const raw = await callClaude([{role:'user',content:prompt}]);
+    exercises = getJSON(raw);
+    if (!Array.isArray(exercises)||exercises.length<1) throw new Error('Bad response');
+    exercises = exercises.slice(0,5);
+    qi=0; score=0; dotEls=[];
+    buildDots(); renderQ();
+  } catch(e) {
+    document.getElementById('q-area').innerHTML = '<div class="fb bad">Error: '+e.message+'</div><br><button class="btn btn-ghost" style="margin-top:.75rem" onclick="goTopics()">← Back</button>';
+  }
+}
+
+async function startReview() {
+  reviewMode = true;
+  const mistakes = getMistakes();
+  if (mistakes.length===0) { toast('No mistakes to review!'); return; }
+  document.getElementById('topic-select').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  document.getElementById('result-area').style.display='none';
+  const pool = mistakes.slice(-20).sort(()=>Math.random()-.5).slice(0,5);
+  exercises = pool.map(m=>({sentence:m.sentence,answer:m.correct,hint:'',explanation:m.explanation,topicLabel:m.topicLabel}));
+  qi=0; score=0; dotEls=[];
+  buildDots(); renderQ();
+}
+
+function buildDots() {
+  const c=document.getElementById('prog-dots'); c.innerHTML=''; dotEls=[];
+  for(let i=0;i<exercises.length;i++){
+    const d=document.createElement('div');
+    d.className='pd'+(i===0?' cur':'');
+    c.appendChild(d); dotEls.push(d);
+  }
+}
+
+function setDot(i,cls){ if(dotEls[i]) dotEls[i].className='pd '+cls; if(dotEls[i+1]) dotEls[i+1].classList.add('cur'); }
+
+function renderQ() {
+  if (qi>=exercises.length) { showResult(); return; }
+  const ex = exercises[qi];
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('q-num').textContent = (qi+1)+'/'+exercises.length;
+  const topicLabel = ex.topicLabel || TOPICS.find(t=>t.key===topicKey)?.label || '';
+  const disp = ex.sentence.replace('___','<span class="blank">___</span>');
+  document.getElementById('q-area').innerHTML=`
+    <div class="q-card">
+      <div class="q-meta">Q${qi+1} of ${exercises.length} &nbsp;·&nbsp; ${topicLabel}${reviewMode?' &nbsp;·&nbsp; <span style="color:var(--gold)">Review mode</span>':''}</div>
+      <div class="q-sentence">${disp}</div>
+      <div class="answer-row">
+        <input id="ai" type="text" placeholder="Your answer…" onkeydown="if(event.key==='Enter')checkAnswer()"/>
+        <button class="btn btn-primary" id="cb" onclick="checkAnswer()">Check</button>
+      </div>
+      <div id="fb"></div>
+      <button class="btn btn-ghost" id="nb" style="display:none;margin-top:.75rem" onclick="nextQ()">${qi<exercises.length-1?'Next →':'See results →'}</button>
+    </div>`;
+  document.getElementById('ai').focus();
+}
+
+async function checkAnswer() {
+  const inp=document.getElementById('ai');
+  const ans=inp.value.trim(); if(!ans) return;
+  inp.disabled=true; document.getElementById('cb').disabled=true;
+  document.getElementById('fb').innerHTML='<div class="fb wait">Checking…</div>';
+  const ex=exercises[qi];
+  const topicLabel = ex.topicLabel || TOPICS.find(t=>t.key===topicKey)?.label || '';
+
+  const prompt = `Grammar topic: "${topicLabel}". Sentence: "${ex.sentence}". Correct answer: "${ex.answer}". Student answered: "${ans}".
+Return ONLY raw JSON: {"correct":true,"explanation":"one clear sentence about the grammar rule"}`;
+
+  try {
+    const raw = await callClaude([{role:'user',content:prompt}]);
+    const res = getJSON(raw);
+    const ok = !!res.correct;
+    if (ok) score++;
+    setDot(qi, ok?'ok':'bad');
+    if (!ok) saveMistake({sentence:ex.sentence,userAnswer:ans,correct:ex.answer,explanation:res.explanation||'',topicKey:topicKey||'review',topicLabel,date:new Date().toLocaleDateString()});
+    saveProgress(topicKey||'review', ok);
+    qi++;
+    document.getElementById('score-val').textContent=score;
+    document.getElementById('fb').innerHTML=`<div class="fb ${ok?'ok':'bad'}"><strong>${ok?'Correct!':'Correct answer: '+ex.answer}</strong><br>${res.explanation||''}</div>`;
+    document.getElementById('nb').style.display='inline-block';
+  } catch(e) {
+    document.getElementById('fb').innerHTML='<div class="fb bad">Error: '+e.message+'</div>';
+    inp.disabled=false; document.getElementById('cb').disabled=false;
+  }
+}
+
+function nextQ(){ renderQ(); }
+
+function showResult() {
+  document.getElementById('quiz-area').style.display='none';
+  document.getElementById('result-area').style.display='block';
+  document.getElementById('r-score').textContent=score;
+  const levels=[
+    {max:1,label:'Beginner',bg:'rgba(224,92,92,.15)',fg:'#e05c5c',tip:'Keep going! Daily practice builds confidence fast.'},
+    {max:2,label:'Elementary',bg:'rgba(201,168,76,.1)',fg:'#c9a84c',tip:"You're making progress. Review your mistakes and try again."},
+    {max:3,label:'Intermediate',bg:'rgba(108,158,207,.15)',fg:'#6c9ecf',tip:'Solid! A bit more practice and you will nail it.'},
+    {max:4,label:'Upper-Intermediate',bg:'rgba(76,175,130,.15)',fg:'#4caf82',tip:'Great work! You clearly understand this topic well.'},
+    {max:5,label:'Advanced',bg:'rgba(201,168,76,.2)',fg:'#e8c97a',tip:'Perfect score! Topic mastered.'},
+  ];
+  const lv=levels.find(l=>score<=l.max)||levels[levels.length-1];
+  const b=document.getElementById('r-badge');
+  b.textContent=lv.label; b.style.background=lv.bg; b.style.color=lv.fg;
+  document.getElementById('r-tip').textContent=lv.tip;
+  renderTopics();
+}
+
+function goTopics() {
+  document.getElementById('topic-select').style.display='block';
+  document.getElementById('quiz-area').style.display='none';
+  document.getElementById('result-area').style.display='none';
+  exercises=[]; qi=0; score=0; dotEls=[];
+  renderTopics();
+}
+
+function getMistakes(){ try{return JSON.parse(localStorage.getItem('gt_mistakes')||'[]');}catch(_){return[];} }
+function saveMistake(m){ const a=getMistakes(); a.push(m); if(a.length>200) a.splice(0,a.length-200); localStorage.setItem('gt_mistakes',JSON.stringify(a)); }
+function clearMistakes(){ if(confirm('Clear all mistakes?')){ localStorage.removeItem('gt_mistakes'); renderMistakes(); toast('Mistakes cleared'); renderTopics(); } }
+
+function getProgress(){ try{return JSON.parse(localStorage.getItem('gt_progress')||'{}');}catch(_){return{};} }
+function saveProgress(key, correct){
+  const p=getProgress();
+  if(!p[key]) p[key]={correct:0,total:0,attempts:0};
+  p[key].total++; if(correct) p[key].correct++;
+  if(p[key].total%5===0) p[key].attempts++;
+  localStorage.setItem('gt_progress',JSON.stringify(p));
+}
+
+function renderMistakes() {
+  const list=getMistakes().reverse();
+  const el=document.getElementById('mistakes-list');
+  if(list.length===0){ el.innerHTML='<div class="empty-state"><div>🎯</div>No mistakes logged yet. Take a quiz to get started.</div>'; return; }
+  el.innerHTML=list.map(m=>`
+    <div class="mistake-item">
+      <div class="mi-sentence">${m.sentence.replace('___','<span class="blank">___</span>')}</div>
+      <div class="mi-meta">
+        <span class="mi-topic">${m.topicLabel||m.topicKey}</span>
+        <span class="mi-wrong">You wrote: ${m.userAnswer}</span>
+        <span class="mi-correct">Correct: ${m.correct}</span>
+        <span>${m.date||''}</span>
+      </div>
+      ${m.explanation?'<div class="mi-exp">'+m.explanation+'</div>':''}
+    </div>`).join('');
+}
+
+function renderProgress() {
+  const prog=getProgress();
+  const el=document.getElementById('progress-list');
+  const rows=TOPICS.map(t=>{
+    const p=prog[t.key];
+    const pct=p&&p.total>0?Math.round((p.correct/p.total)*100):0;
+    const total=p?p.total:0;
+    return `<div class="prog-topic">
+      <div class="prog-name">${t.label}</div>
+      <div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:${pct}%"></div></div>
+      <div class="prog-pct" style="color:${pct>=70?'var(--green)':pct>=40?'var(--gold)':'var(--text3)'}">${total>0?pct+'%':'—'}</div>
+      <div class="prog-attempts">${total>0?total+' answers':''}</div>
+    </div>`;
+  }).join('');
+  const hasData=TOPICS.some(t=>prog[t.key]&&prog[t.key].total>0);
+  el.innerHTML=hasData?rows:'<div class="empty-state"><div>📊</div>No data yet. Take a quiz to see your progress.</div>';
+}
+
+// ── START ─────────────────────────────────────────────────────────────────────
+initPin();
+</script>
+</body>
+</html>
