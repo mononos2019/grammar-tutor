@@ -240,10 +240,10 @@ a:hover{text-decoration:underline}
   <!-- QUIZ -->
   <div id="screen-quiz" class="screen active">
     <div id="topic-select">
-      <p class="section-title">Choose a topic</p>
+      <p class="section-title">Choose a topic, then press Start quiz</p>
       <div class="topics" id="topics-grid"></div>
       <div class="row-btns">
-        <button class="btn btn-primary" id="start-btn" onclick="startQuiz()" disabled>Start quiz</button>
+        <button class="btn btn-primary" id="start-btn" onclick="startQuiz()">Start quiz</button>
         <button class="btn btn-ghost" onclick="startReview()" id="review-btn" style="display:none">Review mistakes</button>
       </div>
     </div>
@@ -499,7 +499,7 @@ function renderTopics() {
       <div class="tc-count">${attempts>0 ? pct+'% accuracy · '+attempts+' quizzes' : 'Not tried yet'}</div>
     </div>`;
   }).join('');
-  document.getElementById('start-btn').disabled = !topicKey || !apiKey;
+  document.getElementById('start-btn').disabled = false;
   const mistakes = getMistakes();
   const rb = document.getElementById('review-btn');
   rb.style.display = mistakes.length > 0 ? 'inline-block' : 'none';
@@ -509,7 +509,7 @@ function pickTopic(key, el) {
   topicKey = key;
   document.querySelectorAll('.topic-card').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  document.getElementById('start-btn').disabled = !apiKey;
+  document.getElementById('start-btn').disabled = false;
 }
 
 async function startQuiz() {
